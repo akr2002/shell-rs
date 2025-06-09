@@ -5,17 +5,25 @@
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable"; # Use stable release
     flake-utils.url = "github:numtide/flake-utils";
     rust-overlay.url = "github:oxalica/rust-overlay";
+    nixvim.url = "github:nix-community/nixvim";
   };
 
-  outputs = { self, nixpkgs, flake-utils, rust-overlay, ... }:
+  outputs = { self, nixpkgs, flake-utils, rust-overlay, nixvim, ... }:
     flake-utils.lib.eachDefaultSystem (system:
       let
+      	config = import ./config;
         overlays = [ rust-overlay.overlays.default ];
         pkgs = import nixpkgs {
           inherit system overlays;
         };
 
         rustToolchain = pkgs.rust-bin.stable.latest.default;
+
+	nixvimlib = nixvim.lib.${system};
+        vv = nixvim.legacyPackages.x86_64-linux.makeNixvimWithModule {
+	inherit pkgs;
+	module = config;
+        };
       in
       {
         packages.default = pkgs.rustPlatform.buildRustPackage {
@@ -31,6 +39,7 @@
         devShells.default = pkgs.mkShell {
           buildInputs = [
             rustToolchain
+            vv
             pkgs.rust-analyzer
             pkgs.clippy
             pkgs.rustfmt
